@@ -61,7 +61,9 @@ def slow_stats_for_hotspot(addr, hname, d):
     # update.  
 
     # note 'location' uses 'lon', but the hotspot returns 'lng'
-    SLOW_DATA[addr]['distance_ret'] = req_get_json(mkurl('hotspots/location/distance', '?lat=', float(d['lat']), '&lon=', float(d['lng']), '&distance=', NEARBY_DISTANCE_M))
+    dret = req_get_json(mkurl('hotspots/location/distance', '?lat=', float(d['lat']), '&lon=', float(d['lng']), '&distance=', NEARBY_DISTANCE_M))
+    if not dret: return # bail for bad data
+    SLOW_DATA[addr]['distance_ret'] = dret
     SLOW_DATA[addr]['last_updated'] = now
 
 
@@ -96,6 +98,7 @@ def normalize_hotspot_name(hname):
 def get_hotspots_by_account(account_addr):
   ret = req_get_json(mkurl('accounts/', account_addr, '/hotspots'))
   log.info(f"ghbo ret: {ret}")
+  if not ret: return # check for bad data
   # cowardly refuse to return an entry if there's > 1 with the same name
   if d:= ret.get('data'):
     return [x['address'] for x in d]
@@ -105,6 +108,7 @@ def get_hotspots_by_account(account_addr):
 def get_hotspot_address(hotspot_name):
   ret = req_get_json(mkurl('hotspots/name/', hotspot_name))
   log.info(f"gha ret: {ret}")
+  if not ret: return # check for bad data
   # cowardly refuse to return an entry if there's > 1 with the same name
   if len(ret['data']) > 1:
     log.error(f"cowardly refusing to look up address for hotspot name {hotspot_name} as it isn't unique. There are {len(ret['data'])} hotspots with that name.")
@@ -202,6 +206,8 @@ def stats_for_hotspot(addr, hname):
 
 def account_activity_counts(addr):
   cret = req_get_json(mkurl('accounts/', addr, '/activity/count'))
+  log.debug(cret)
+  if not cret: return # check for bad data
   # only send some of these; not sure if they are all in use
   for k,v, in cret['data'].items():
     if k.startswith( ('rewards_', 'payment_', 'assert_', 'add_gateway') ):
@@ -211,12 +217,16 @@ def account_activity_counts(addr):
 def hotspot_activity_counts(addr,hname):
   cret = req_get_json(mkurl('hotspots/', addr, '/activity/count'))
   # only send some of these; not sure if they are all in use
+  log.debug(cret)
+  if not cret: return # check for bad data
   for k,v, in cret['data'].items():
     if k.startswith( ('state_channel_', 'rewards_', 'poc_', 'consensus_', 'assert_') ):
       HOTSPOT_ACTIVITY_COUNT.labels(addr,hname,k).set(v)
 
 def account_stats(addr):
   aret = req_get_json(mkurl('accounts/', addr))
+  log.debug(aret)
+  if not aret: return # check for bad data
   hnt_bal = 0
   dc_bal = 0
   if bal := aret['data']['balance']:
@@ -245,6 +255,8 @@ def get_prices():
 
   # official/oracle
   oret = req_get_json(mkurl('oracle/prices/current'))
+  log.debug(oret)
+  if not oret: return # check for bad data
   d = oret['data']
   if d['price']:
     HELIUM_PRICES.labels('HNT', 'oracle').set(d['price']/10**8)
@@ -256,6 +268,8 @@ def get_prices():
 
   # unofficial sources follow
   bret = req_get_json('https://api.binance.com/api/v3/ticker/price?symbol=HNTUSDT')
+  log.debug(bret)
+  if not bret: return # check for bad data
   HELIUM_PRICES.labels('HNT', 'binance').set(bret['price'])
 
 COLLECT = []
