@@ -3,7 +3,7 @@ LABEL org.opencontainers.image.source https://github.com/tedder/helium_hotspot_e
 ENV PYTHONUNBUFFERED=1
 ENV HOTSPOT_NAMES=
 ENV HOTSPOT_ADDRESSES=
-ENV OWNER_ADDRESSES=
+ENV ACCOUNT_ADDRESSES=
 EXPOSE 9825
 
 #RUN apt update && apt install -y vim

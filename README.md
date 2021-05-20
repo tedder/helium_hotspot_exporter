@@ -14,11 +14,11 @@ Note [port 9829 is the 'reserved' port for this specific exporter](https://githu
 
 ## Run options
 
-The list of hotspots you'd like to monitor can be specified several ways: by name, by address, or by owner address. They all expect comma-separated values (or zero/one without a comma). Here are examples:
+The list of hotspots you'd like to monitor can be specified several ways: by name, by address, or by account (owner) address. They all expect comma-separated values (or zero/one without a comma). Here are examples:
 ```
 HOTSPOT_NAMES="angry-purple-tiger,bald cat lace"
 HOTSPOT_ADDRESSES=aabbccdd112233XXYY...,bbccddee223344YYZZ...
-OWNER_ADDRESSES=Zzyzx0123...
+ACCOUNT_ADDRESSES=Zzyzx0123...
 ```
 
 Note hotspot names must be lowercased and hypenated before they hit the API. This code will normalize case and spaces. Names are also not guaranteed unique, the code will attempt to log an error if it isn't found or it isn't unique.
@@ -45,6 +45,6 @@ services:
     env:
       HOTSPOT_NAMES: "angry-purple-tiger"
       HOTSPOT_ADDRESSES: "aabbccdd112233XXYY...,bbccddee223344YYZZ..."
-      OWNER_ADDRESSES: "Zzyzx0123..."
+      ACCOUNT_ADDRESSES: "Zzyzx0123..."
 ```
 
