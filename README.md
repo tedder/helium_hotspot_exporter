@@ -3,11 +3,7 @@ Prometheus exporter for [Helium hotspots](https://helium.com/). Using prometheus
 
 This is only the exporter, which still requires a **prometheus server** for data and **grafana** for the dashboard.
 
-<!--
-todo: need a dashboard for this.
-
-The [helium\_miner\_grafana\_dashboard](https://github.com/tedder/helium_miner_grafana_dashboard) can be imported to Grafana.
--->
+**We need help making a dashboard**. For now, import by ID [14470](https://grafana.com/grafana/dashboards/14470) to see some of the values (though it isn't organized).
 
 Note [port 9829 is the 'reserved' port for this specific exporter](https://github.com/prometheus/prometheus/wiki/Default-port-allocations).
 
