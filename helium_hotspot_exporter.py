@@ -29,6 +29,10 @@ req = requests.session()
 # Create a metric to track time spent and requests made.
 REQUEST_TIME = prometheus_client.Summary('helium_hotspot_exporter_runtime_seconds', 'Time spent processing hotspot exporter')
 
+HELIUM_PRICES = prometheus_client.Gauge('helium_price', 'USD price of token', ['token','price_source'])
+HELIUM_PRICE_UPDATED_BLOCK = prometheus_client.Gauge('helium_price_updated_block', 'block where price was updated (if applicable)', ['token','price_source'])
+HELIUM_PRICE_UPDATED_EPOCH = prometheus_client.Gauge('helium_price_updated_epoch_seconds', 'Time since price was updated (if applicable)', ['token','price_source'])
+
 HOTSPOT_UP = prometheus_client.Gauge('helium_hotspot_up', 'Census of hotspots in existence', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_ONLINE = prometheus_client.Gauge('helium_hotspot_online', 'Hotspot is listed as online', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_YES_LISTEN_ADDRS = prometheus_client.Gauge('helium_hotspot_has_listen_address', 'Hotspot shows a listen address', ['hotspot_address', 'hotspot_name'])
@@ -230,6 +234,21 @@ def stats_for_account(addr):
   account_activity_counts(addr)
 
 
+def get_prices():
+  # official/oracle
+  oret = req_get_json(mkurl('oracle/prices/current'))
+  d = oret['data']
+  if d['price']:
+    HELIUM_PRICES.labels('HNT', 'oracle').set(d['price']/10**8)
+  HELIUM_PRICE_UPDATED_BLOCK.labels('HNT', 'oracle').set(d['block'])
+
+  now = datetime.datetime.now(datetime.timezone.utc)
+  ts = dateutil.parser.parse(d['timestamp'])
+  HELIUM_PRICE_UPDATED_EPOCH.labels('HNT', 'oracle').set( (now-ts).total_seconds() )
+
+  # unofficial sources follow
+  bret = req_get_json('https://api.binance.com/api/v3/ticker/price?symbol=HNTUSDT')
+  HELIUM_PRICES.labels('HNT', 'binance').set(bret['price'])
 
 COLLECT = []
 @REQUEST_TIME.time()
@@ -247,6 +266,7 @@ def stats():
   for addr,_ in COLLECT['accounts'].items():
     stats_for_account(addr)
 
+  get_prices()
 
 if __name__ == '__main__':
   prometheus_client.start_http_server(9826)
