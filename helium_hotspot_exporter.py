@@ -234,7 +234,15 @@ def stats_for_account(addr):
   account_activity_counts(addr)
 
 
+PRICE_TIME = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 def get_prices():
+  global PRICE_TIME
+
+  now = datetime.datetime.now(datetime.timezone.utc)
+  if (now-PRICE_TIME).total_seconds() < 600:
+    # don't run too often
+    return
+
   # official/oracle
   oret = req_get_json(mkurl('oracle/prices/current'))
   d = oret['data']
