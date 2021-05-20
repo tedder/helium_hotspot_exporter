@@ -174,7 +174,6 @@ def stats_for_hotspot(addr, hname):
   # slow_whatever
   slow_stats_for_hotspot(addr, hname, d)
 
-
 HOTSPOTS = []
 @REQUEST_TIME.time()
 def stats():
