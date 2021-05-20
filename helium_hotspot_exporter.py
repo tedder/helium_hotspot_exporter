@@ -291,8 +291,8 @@ def stats():
   get_prices()
 
 if __name__ == '__main__':
-  prometheus_client.start_http_server(9826)
-  log.info("started prometheus on port 9826")
+  prometheus_client.start_http_server(9829)
+  log.info("started prometheus on port 9829")
   while True:
     try:
       stats()
