@@ -6,6 +6,7 @@ import requests
 import dateutil.parser
 
 # internal packages
+import json
 import datetime
 import time
 import os
@@ -85,9 +86,18 @@ def req_get_json(url):
 def normalize_hotspot_name(hname):
   return hname.strip().lower().replace(' ', '-')
 
+def get_hotspots_by_owner(owner_addr):
+  ret = req_get_json(mkurl('accounts/', owner_addr, '/hotspots'))
+  log.info(f"ghbo ret: {ret}")
+  # cowardly refuse to return an entry if there's > 1 with the same name
+  if d:= ret.get('data'):
+    return [x['address'] for x in d]
+
+  return None
+
 def get_hotspot_address(hotspot_name):
   ret = req_get_json(mkurl('hotspots/name/', hotspot_name))
-  log.info(ret)
+  log.info(f"gha ret: {ret}")
   # cowardly refuse to return an entry if there's > 1 with the same name
   if len(ret['data']) > 1:
     log.error(f"cowardly refusing to look up address for hotspot name {hotspot_name} as it isn't unique. There are {len(ret['data'])} hotspots with that name.")
@@ -95,8 +105,6 @@ def get_hotspot_address(hotspot_name):
     log.error(f"could not find address for hotspot name {hotspot_name}. It doesn't exist.")
   elif len(ret['data']) == 1:
     return ret['data'][0]['address']
-
-  return None
 
 def get_hotspot_name(hotspot_address):
   ret = req_get_json(mkurl('hotspots/', hotspot_address))
@@ -120,13 +128,13 @@ def collect_hotspots():
         hotspot_addresses.append(ha)
   if haddrs := os.environ.get('HOTSPOT_ADDRESSES', ''):
     for ha in haddrs.split(','):
-      ha = ha.strip().lower()
+      ha = ha.strip()
       log.info(f"adding explicit address {ha}")
       hotspot_addresses.append(ha)
   if oas := os.environ.get('OWNER_ADDRESSES', ''):
     for oa in oas.split(','):
       log.info(f"looking up hotspots by owner address {oa}")
-      oa = oa.strip().lower()
+      oa = oa.strip()
       if haddrs := get_hotspots_by_owner(oa):
         log.info(f"got addresses for owner address {oa}: hotspots: {haddrs}")
         hotspot_addresses.extend(haddrs)
