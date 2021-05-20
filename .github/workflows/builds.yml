@@ -51,7 +51,7 @@ jobs:
         platforms: linux/amd64,linux/arm64,linux/arm/v7
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
-          tedder42/miner_exporter:latest
-          ghcr.io/${{ github.repository_owner }}/miner_exporter:latest
+          tedder42/helium_hotspot_exporter:latest
+          ghcr.io/${{ github.repository_owner }}/helium_hotspot_exporter:latest
 
 
