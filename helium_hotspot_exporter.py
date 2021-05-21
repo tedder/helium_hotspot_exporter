@@ -119,6 +119,7 @@ def get_hotspot_address(hotspot_name):
 
 def get_hotspot(hotspot_address):
   ret = req_get_json(mkurl('hotspots/', hotspot_address))
+  if not ret: return
   return ret['data']
 
 def collect_hotspots_and_accounts():
@@ -157,6 +158,7 @@ def collect_hotspots_and_accounts():
   accounts = {}
   for ha in hotspot_addresses:
     h = get_hotspot(ha)
+    if not h: return
     hn = h['name']
     ho = h['owner']
     accounts[ho] = accounts.get(ho,0) + 1
@@ -171,6 +173,7 @@ def collect_hotspots_and_accounts():
 def stats_for_hotspot(addr, hname):
   # do main stats
   d = get_hotspot(addr)
+  if not d: return
 
   # this hotspot exists.
   HOTSPOT_UP.labels(addr,hname).set(1)
