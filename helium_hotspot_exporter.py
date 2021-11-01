@@ -37,6 +37,8 @@ HOTSPOT_UP = prometheus_client.Gauge('helium_hotspot_up', 'Census of hotspots in
 HOTSPOT_ONLINE = prometheus_client.Gauge('helium_hotspot_online', 'Hotspot is listed as online', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_YES_LISTEN_ADDRS = prometheus_client.Gauge('helium_hotspot_has_listen_address', 'Hotspot shows a listen address', ['hotspot_address', 'hotspot_name'])
 
+HOTSPOT_REWARDS =  prometheus_client.Gauge('helium_hotspot_rewards', 'HNT rewards for the last 1 / 7 / 30 days', ['hotspot_address', 'hotspot_name', 'timeframe'])
+
 HOTSPOT_EXIST_EPOCH = prometheus_client.Gauge('helium_hotspot_existence_epoch_seconds', 'Time that hotspot has been in existence', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_HEIGHT = prometheus_client.Gauge('helium_hotspot_heights', 'Blockchain height of various states', ['hotspot_address', 'hotspot_name', 'state_type'])
 HOTSPOT_SCALE = prometheus_client.Gauge('helium_hotspot_reward_scale', 'Reward scale of hotspot', ['hotspot_address', 'hotspot_name'])
@@ -58,7 +60,7 @@ def slow_stats_for_hotspot(addr, hname, d):
   lu = SLOW_DATA[addr]['last_updated'] or datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 
   if (now-lu).total_seconds() > 3600:
-    # update.  
+    # update.
 
     # note 'location' uses 'lon', but the hotspot returns 'lng'
     dret = req_get_json(mkurl('hotspots/location/distance', '?lat=', float(d['lat']), '&lon=', float(d['lng']), '&distance=', NEARBY_DISTANCE_M))
@@ -121,6 +123,14 @@ def get_hotspot(hotspot_address):
   ret = req_get_json(mkurl('hotspots/', hotspot_address))
   if not ret: return
   return ret['data']
+def get_hotspot_rewards(hotspot_address, lastxdays):
+    #create iso timestamps
+  now = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+  then = (datetime.datetime.utcnow().replace(microsecond=0) - datetime.timedelta(days=lastxdays)).isoformat()
+
+  ret = req_get_json(mkurl('hotspots/', hotspot_address, '/rewards/sum/?min_time=', then, 'Z&max_time=', now, 'Z'))
+  if not ret: return
+  return ret['data']
 
 def collect_hotspots_and_accounts():
   '''Using our environment config, collect all the hotspots we should
@@ -173,6 +183,10 @@ def collect_hotspots_and_accounts():
 def stats_for_hotspot(addr, hname):
   # do main stats
   d = get_hotspot(addr)
+  d1 = get_hotspot_rewards(addr, 1)
+  d7 = get_hotspot_rewards(addr, 7)
+  d30 = get_hotspot_rewards(addr, 30)
+
   if not d: return
 
   # this hotspot exists.
@@ -206,6 +220,11 @@ def stats_for_hotspot(addr, hname):
 
   # slow stats
   slow_stats_for_hotspot(addr, hname, d)
+
+  # rewards
+  HOTSPOT_REWARDS.labels(addr, hname, '1d').set(d1['total'])
+  HOTSPOT_REWARDS.labels(addr, hname, '7d').set(d7['total'])
+  HOTSPOT_REWARDS.labels(addr, hname, '30d').set(d30['total'])
 
 def account_activity_counts(addr):
   cret = req_get_json(mkurl('accounts/', addr, '/activity/count'))
@@ -305,4 +324,3 @@ if __name__ == '__main__':
 
     # sleep 30 seconds
     time.sleep(UPDATE_PERIOD)
-
