@@ -193,6 +193,8 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_UP.labels(addr,hname).set(1)
 
   HOTSPOT_HEIGHT.labels(addr,hname,'system').set(d['block'])
+  if d['status']['height'] == None:
+      d['status']['height'] = 0
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_added').set(d['block_added'])
   #HOTSPOT_HEIGHT.labels(addr,hname,'score_update').set(d[''])
@@ -210,8 +212,11 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_ONLINE.labels(addr,hname).set(isup)
 
   haz_addr = 0
-  if len(d['status']['listen_addrs']):
-    haz_addr = 1
+  try: 
+    if len(d['status']['listen_addrs']):
+      haz_addr = 1
+  except:
+     log.warn("status for hotspot %s is incomplete. Maybe this is a new hotspot"%hname)
   HOTSPOT_YES_LISTEN_ADDRS.labels(addr,hname).set(haz_addr)
 
   # other stats
