@@ -23,6 +23,7 @@ API_BASE_URL = os.environ.get('API_BASE_URL', 'https://api.helium.io/v1/')
 UPDATE_PERIOD = int(os.environ.get('UPDATE_PERIOD', 30))
 NEARBY_DISTANCE_M = int(os.environ.get('NEARBY_DISTANCE_M', 20*1000))
 
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 req = requests.session()
 
 
@@ -86,7 +87,7 @@ def mkurl(*args):
 def req_get_json(url):
   try:
     log.debug(f"fetching url: {url}")
-    ret = req.get(url)
+    ret = req.get(url, headers=headers)
     log.debug(f"fetch returned: {ret}")
     if ret and ret.ok:
       return ret.json()
@@ -198,6 +199,8 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_added').set(d['block_added'])
   #HOTSPOT_HEIGHT.labels(addr,hname,'score_update').set(d[''])
+  if d['last_poc_challenge'] == None:
+      d['last_poc_challenge'] = 0
   HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_last_changed').set(d['last_change_block'])
 
