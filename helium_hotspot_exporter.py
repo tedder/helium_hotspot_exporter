@@ -179,10 +179,14 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_UP.labels(addr,hname).set(1)
 
   HOTSPOT_HEIGHT.labels(addr,hname,'system').set(d['block'])
+  if not d['status']['height']:
+      log.warning("Hotspot %s not reporting height, this is a new hotspot"%hname)
+      d['status']['height']=-0
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_added').set(d['block_added'])
   #HOTSPOT_HEIGHT.labels(addr,hname,'score_update').set(d[''])
-  HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
+  if d['last_poc_challenge']:
+    HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_last_changed').set(d['last_change_block'])
 
   now = datetime.datetime.now(datetime.timezone.utc)
@@ -196,8 +200,10 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_ONLINE.labels(addr,hname).set(isup)
 
   haz_addr = 0
-  if len(d['status']['listen_addrs']):
+  if d['status']['listen_addrs'] and len(d['status']['listen_addrs']):
     haz_addr = 1
+  else:
+    log.warning("status for hotspot %s is incomplete. Maybe this is a new hotspot"%hname)
   HOTSPOT_YES_LISTEN_ADDRS.labels(addr,hname).set(haz_addr)
 
   # other stats
