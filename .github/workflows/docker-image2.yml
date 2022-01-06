@@ -1,4 +1,4 @@
-name: ZZZZ
+name: Docker build and push to custom docker registry
 
 on:
   push:
@@ -45,7 +45,13 @@ jobs:
           tags: |
             cloud.canister.io:5000/locohamster/loco_exporter
             cloud.canister.io:5000/locohamster/loco_exporter:${{ steps.buildnumber.outputs.build_number }}
-      - name: Print image url
-        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
-      
+      - 
+        name: Print tags
+        run: echo "Image pushed to ${{ steps.meta.outputs.tags }}"
+      -
+        name: Print image url
+        run: cloud.canister.io:5000/locohamster/loco_exporter:${{ steps.buildnumber.outputs.build_number }}
+
+
+   
   
