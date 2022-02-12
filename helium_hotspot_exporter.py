@@ -178,11 +178,12 @@ def stats_for_hotspot(addr, hname):
   # this hotspot exists.
   HOTSPOT_UP.labels(addr,hname).set(1)
 
+  if d['mode'] == 'full':
+    HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
+    HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
   HOTSPOT_HEIGHT.labels(addr,hname,'system').set(d['block'])
-  HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_added').set(d['block_added'])
   #HOTSPOT_HEIGHT.labels(addr,hname,'score_update').set(d[''])
-  HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_last_changed').set(d['last_change_block'])
 
   now = datetime.datetime.now(datetime.timezone.utc)
@@ -191,8 +192,9 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_EXIST_EPOCH.labels(addr,hname).set(ts_delta)
 
   isup = 0
-  if d['status']['online'] == 'online':
-    isup = 1
+  if d['mode'] == 'full':
+    if d['status']['online'] == 'online':
+      isup = 1
   HOTSPOT_ONLINE.labels(addr,hname).set(isup)
 
   haz_addr = 0
