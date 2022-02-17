@@ -23,6 +23,7 @@ API_BASE_URL = os.environ.get('API_BASE_URL', 'https://api.helium.io/v1/')
 UPDATE_PERIOD = int(os.environ.get('UPDATE_PERIOD', 30))
 NEARBY_DISTANCE_M = int(os.environ.get('NEARBY_DISTANCE_M', 20*1000))
 
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 req = requests.session()
 
 
@@ -36,6 +37,8 @@ HELIUM_PRICE_UPDATED_EPOCH = prometheus_client.Gauge('helium_price_updated_epoch
 HOTSPOT_UP = prometheus_client.Gauge('helium_hotspot_up', 'Census of hotspots in existence', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_ONLINE = prometheus_client.Gauge('helium_hotspot_online', 'Hotspot is listed as online', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_YES_LISTEN_ADDRS = prometheus_client.Gauge('helium_hotspot_has_listen_address', 'Hotspot shows a listen address', ['hotspot_address', 'hotspot_name'])
+
+HOTSPOT_REWARDS =  prometheus_client.Gauge('helium_hotspot_rewards', 'HNT rewards for the last 1 / 7 / 30 days', ['hotspot_address', 'hotspot_name', 'timeframe'])
 
 HOTSPOT_EXIST_EPOCH = prometheus_client.Gauge('helium_hotspot_existence_epoch_seconds', 'Time that hotspot has been in existence', ['hotspot_address', 'hotspot_name'])
 HOTSPOT_HEIGHT = prometheus_client.Gauge('helium_hotspot_heights', 'Blockchain height of various states', ['hotspot_address', 'hotspot_name', 'state_type'])
@@ -58,7 +61,7 @@ def slow_stats_for_hotspot(addr, hname, d):
   lu = SLOW_DATA[addr]['last_updated'] or datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 
   if (now-lu).total_seconds() > 3600:
-    # update.  
+    # update.
 
     # note 'location' uses 'lon', but the hotspot returns 'lng'
     dret = req_get_json(mkurl('hotspots/location/distance', '?lat=', float(d['lat']), '&lon=', float(d['lng']), '&distance=', NEARBY_DISTANCE_M))
@@ -84,7 +87,7 @@ def mkurl(*args):
 def req_get_json(url):
   try:
     log.debug(f"fetching url: {url}")
-    ret = req.get(url)
+    ret = req.get(url, headers=headers)
     log.debug(f"fetch returned: {ret}")
     if ret and ret.ok:
       return ret.json()
@@ -119,6 +122,14 @@ def get_hotspot_address(hotspot_name):
 
 def get_hotspot(hotspot_address):
   ret = req_get_json(mkurl('hotspots/', hotspot_address))
+  if not ret: return
+  return ret['data']
+def get_hotspot_rewards(hotspot_address, lastxdays):
+    #create iso timestamps
+  now = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+  then = (datetime.datetime.utcnow().replace(microsecond=0) - datetime.timedelta(days=lastxdays)).isoformat()
+
+  ret = req_get_json(mkurl('hotspots/', hotspot_address, '/rewards/sum/?min_time=', then, 'Z&max_time=', now, 'Z'))
   if not ret: return
   return ret['data']
 
@@ -173,17 +184,21 @@ def collect_hotspots_and_accounts():
 def stats_for_hotspot(addr, hname):
   # do main stats
   d = get_hotspot(addr)
+  d1 = get_hotspot_rewards(addr, 1)
+  d7 = get_hotspot_rewards(addr, 7)
+  d30 = get_hotspot_rewards(addr, 30)
+
   if not d: return
 
   # this hotspot exists.
   HOTSPOT_UP.labels(addr,hname).set(1)
 
   if d['mode'] == 'full':
-    HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d['last_poc_challenge'])
-    HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d['status']['height'])
+    HOTSPOT_HEIGHT.labels(addr,hname,'last_poc_challenge').set(d.get('last_poc_challenge',0))
+   
+  HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_current').set(d.get('status',{}).get('height',0))
   HOTSPOT_HEIGHT.labels(addr,hname,'system').set(d['block'])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_added').set(d['block_added'])
-  #HOTSPOT_HEIGHT.labels(addr,hname,'score_update').set(d[''])
   HOTSPOT_HEIGHT.labels(addr,hname,'hotspot_last_changed').set(d['last_change_block'])
 
   now = datetime.datetime.now(datetime.timezone.utc)
@@ -198,8 +213,11 @@ def stats_for_hotspot(addr, hname):
   HOTSPOT_ONLINE.labels(addr,hname).set(isup)
 
   haz_addr = 0
-  if len(d['status']['listen_addrs']):
-    haz_addr = 1
+  try: 
+    if len(d['status']['listen_addrs']):
+      haz_addr = 1
+  except:
+     log.warn("status for hotspot %s is incomplete. Maybe this is a new hotspot"%hname)
   HOTSPOT_YES_LISTEN_ADDRS.labels(addr,hname).set(haz_addr)
 
   # other stats
@@ -208,6 +226,11 @@ def stats_for_hotspot(addr, hname):
 
   # slow stats
   slow_stats_for_hotspot(addr, hname, d)
+
+  # rewards
+  HOTSPOT_REWARDS.labels(addr, hname, '1d').set(d1['total'])
+  HOTSPOT_REWARDS.labels(addr, hname, '7d').set(d7['total'])
+  HOTSPOT_REWARDS.labels(addr, hname, '30d').set(d30['total'])
 
 def account_activity_counts(addr):
   cret = req_get_json(mkurl('accounts/', addr, '/activity/count'))
@@ -307,4 +330,3 @@ if __name__ == '__main__':
 
     # sleep 30 seconds
     time.sleep(UPDATE_PERIOD)
-
