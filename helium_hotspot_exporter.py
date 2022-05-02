@@ -84,13 +84,20 @@ def slow_stats_for_hotspot(addr, hname, d):
 def mkurl(*args):
   return API_BASE_URL + ''.join([str(x) for x in args])
 
-def req_get_json(url):
+def req_get_json(url, delay=0):
+  if delay > 5:
+    return {}
+  elif delay:
+    log.warning("wait for {}s after too frequent requests".format(delay))
   try:
+    time.sleep(delay)
     log.debug(f"fetching url: {url}")
     ret = req.get(url, headers=headers)
     log.debug(f"fetch returned: {ret}")
     if ret and ret.ok:
       return ret.json()
+    elif ret.status_code == 429:
+      return req_get_json(url, delay+0.5)
   except json.JSONDecodeError as ex:
     log.error(f"failed to get {url}, {ex}")
   return {}
